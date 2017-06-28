@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 data = np.load('pulsars_data.npy')
 
 
-
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in xrange(0, len(l), n):
@@ -23,6 +22,16 @@ def flux_integral(pulse):
     flux = sum(area)
     return flux
 
+def pulse_filter(pulse):
+    signal = [sum(i) for i in chunks(pulse,1300)]
+    filt = filter(lambda x: x > sum(pulse[19900:21200]),signal)
+    z =None
+    if len(filt) == 0:
+        z = True
+    else:
+        z = False
+    return z
+
 
 flux,flux_max_list,flux_bin_max_list = [],[],[]
 mean_profile = 0
@@ -31,6 +40,8 @@ for pulse in data:
     dick2 = {np.mean(i):np.std(i) for i in chunks(pulse[21200:],2000)}
     baseline = (min(dick, key=dick.get) + min(dick2,key=dick2.get))/2
     pulse -= baseline
+    if pulse_filter(pulse) == False:
+        continue
     mean_profile  += pulse
     area = pulse[19900:21200]
     integral = sum(area)
@@ -54,6 +65,8 @@ for i in xrange(10):
         i = str(i)
         prof = []
         for pulse in data:
+            if pulse_filter(pulse) == False:
+                continue
             if flux_integral(pulse) < queba and flux_integral(pulse) > first_range:
                 prof.append(pulse)
         pro = sum(prof)/len(prof)
@@ -61,7 +74,7 @@ for i in xrange(10):
 
         fig = plt.figure(1)
         ax = fig.add_subplot(111)
-        plt.xlabel('Phase[s]')
+        plt.xlabel('Phase[bin]')
         plt.ylabel('Flux')
         plt.plot(pro,label = 'profile of ' + str(len(prof)) + ' pulses ; Range between  ' + str(round(first_range * 1,2)) + ' and  ' +str(round(queba * 1,2))+ 'mJy')
         plt.plot(mean_profile,'--',color='red', label='mean profile')
@@ -69,6 +82,7 @@ for i in xrange(10):
 
         handles, labels = ax.get_legend_handles_labels()
         lgd = ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1,0.5))
+        #plt.show()
         fig.savefig(i + '_intensity_range_plot' + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
         plt.clf()
 
